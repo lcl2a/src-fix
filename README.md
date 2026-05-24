@@ -4,7 +4,7 @@ Aidoku 中文图源
 
 ## 如何使用
 
-点击 [这里](https://aidoku.app/add-source-list/?url=https://raw.githubusercontent.com/suiyuran/aidoku-zh-sources/main/public/) 将图源添加到 Aidoku 中。
+点击 [这里](https://aidoku.app/add-source-list/?url=https://raw.githubusercontent.com/lcl2a/src-fix/main/public/) 将图源添加到 Aidoku 中。
 
 如果添加不了，可以点击 [这里](https://aidoku.app/add-source-list/?url=https://cdn.jsdelivr.net/gh/suiyuran/aidoku-zh-sources@main/public/) 试试。
 
