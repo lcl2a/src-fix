@@ -4,7 +4,7 @@ extern crate alloc;
 use aidoku::{
 	error::Result,
 	prelude::*,
-	std::{defaults::defaults_get, net::Request, String, Vec},
+	std::{net::Request, String, Vec},
 	Chapter, Filter, FilterType, Listing, Manga, MangaPageResult, Page,
 };
 use alloc::string::ToString;
