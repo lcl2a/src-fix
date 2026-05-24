@@ -207,6 +207,13 @@ fn modify_image_request(request: Request) -> Request {
         .header("Accept", "image/webp,image/apng,image/*,*/*;q=0.8")
         .header("Accept-Language", "zh-CN,zh;q=0.9");
     
+    // Add additional headers that might be required
+    request = request
+        .header("Origin", WWW_URL)
+        .header("Sec-Fetch-Dest", "image")
+        .header("Sec-Fetch-Mode", "no-cors")
+        .header("Sec-Fetch-Site", "same-origin");
+    
     if !cookie.is_empty() {
         request = request.header("Cookie", &cookie);
     }
