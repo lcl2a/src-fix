@@ -3,7 +3,6 @@ use aidoku::{
 	std::{ArrayRef, ObjectRef, String, Vec},
 	Chapter, Manga, MangaContentRating, MangaStatus, MangaViewer, Page,
 };
-
 use alloc::string::ToString;
 
 pub fn parse_manga_list(manga_list: ArrayRef) -> Vec<Manga> {
@@ -121,6 +120,7 @@ pub fn parse_page_list(manga_id: String, chapter_id: String, page_list: ArrayRef
 		let index = index as i32;
 		let id = page.get("kid").as_string().unwrap().read();
 		let url = helper::gen_page_url(manga_id.clone(), chapter_id.clone(), id);
+		
 		pages.push(Page {
 			index,
 			url,

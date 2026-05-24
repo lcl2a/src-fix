@@ -31,25 +31,27 @@ pub fn gen_page_url(manga_id: String, chapter_id: String, page_id: String) -> St
 }
 
 pub fn gen_referer(image_url: String) -> String {
-	if image_url.starts_with(WWW_URL) {
-		let query = image_url.substring_after("?").unwrap();
-		let manga_id = query
-			.substring_after("mangaId=")
-			.unwrap()
-			.substring_before("&")
-			.unwrap()
-			.to_string();
-		let chapter_id = query.substring_after("chapterId=").unwrap().to_string();
-		gen_chapter_url(manga_id, chapter_id)
-	} else {
-		WWW_URL.to_string()
+	if image_url.starts_with(WWW_URL) && image_url.contains('?') {
+		if let Some(query) = image_url.substring_after("?") {
+			if let Some(manga_id) = query.substring_after("mangaId=").and_then(|s| s.substring_before("&")) {
+				if let Some(chapter_id) = query.substring_after("chapterId=") {
+					return gen_chapter_url(manga_id.to_string(), chapter_id.to_string());
+				}
+			}
+		}
 	}
+	WWW_URL.to_string()
 }
 
 pub fn get_json(body: String) -> ObjectRef {
 	let mut request = Request::new(API_URL, HttpMethod::Post)
 		.body(body.as_bytes())
-		.header("Content-Type", "application/json");
+		.header("Content-Type", "application/json")
+		.header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+		.header("Accept", "application/json")
+		.header("Accept-Language", "en-US,en;q=0.9")
+		.header("Origin", WWW_URL)
+		.header("Referer", WWW_URL);
 
 	let cookie = defaults_get("cookie")
         .and_then(|v| v.as_string())

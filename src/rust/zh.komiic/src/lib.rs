@@ -9,6 +9,12 @@ use aidoku::{
 };
 use alloc::string::ToString;
 
+#[cfg(target_arch = "wasm32")] // important
+#[no_mangle]
+pub extern "C" fn abort() -> ! {
+    loop {}
+}
+
 mod helper;
 mod parser;
 
@@ -163,7 +169,10 @@ fn modify_image_request(request: Request) -> Request {
         .unwrap_or_default();
 
     let request = request
-        .header("Referer", &helper::gen_referer(url));
+        .header("Referer", &helper::gen_referer(url))
+        .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+        .header("Accept", "image/webp,image/apng,image/*,*/*;q=0.8")
+        .header("Accept-Language", "en-US,en;q=0.9");
 
     if cookie.is_empty() {
         request
