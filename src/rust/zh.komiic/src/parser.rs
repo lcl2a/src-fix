@@ -1,3 +1,4 @@
+/*
 use crate::helper;
 use aidoku::{
 	std::{ArrayRef, ObjectRef, String, Vec},
@@ -130,3 +131,4 @@ pub fn parse_page_list(manga_id: String, chapter_id: String, page_list: ArrayRef
 
     pages
 }
+*/

@@ -1,3 +1,4 @@
+/*
 use aidoku::{
 	prelude::*,
 	std::{
@@ -174,3 +175,4 @@ pub fn gen_images_body_string(id: String) -> String {
 		id
 	)
 }
+*/
