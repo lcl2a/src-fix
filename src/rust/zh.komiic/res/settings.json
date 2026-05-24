@@ -20,6 +20,24 @@
         "key": "cookie3",
         "placeholder": "Account Cookie (可选，用于提高每日阅读限额)",
         "default": ""
+      },
+      {
+        "type": "text",
+        "key": "cookie4",
+        "placeholder": "Account Cookie (可选，用于提高每日阅读限额)",
+        "default": ""
+      },
+      {
+        "type": "text",
+        "key": "cookie5",
+        "placeholder": "Account Cookie (可选，用于提高每日阅读限额)",
+        "default": ""
+      },
+      {
+        "type": "text",
+        "key": "cookie6",
+        "placeholder": "Account Cookie (可选，用于提高每日阅读限额)",
+        "default": ""
       }
     ]
   }
