@@ -20,13 +20,6 @@ const FILTER_CATEGORY: [&str; 38] = [
 const FILTER_STATUS: [&str; 3] = ["", "ONGOING", "END"];
 const FILTER_ORDER_BY: [&str; 3] = ["DATE_UPDATED", "VIEWS", "FAVORITE_COUNT"];
 
-// Provide the `abort` symbol required by wasm32 linking on some toolchains.
-#[cfg(target_arch = "wasm32")]
-#[no_mangle]
-pub extern "C" fn abort() -> ! {
-	loop {}
-}
-
 #[get_manga_list]
 fn get_manga_list(filters: Vec<Filter>, page: i32) -> Result<MangaPageResult> {
 	let mut query = String::new();

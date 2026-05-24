@@ -49,11 +49,7 @@ pub fn gen_referer(image_url: String) -> String {
 pub fn get_json(body: String) -> ObjectRef {
 	let mut request = Request::new(API_URL, HttpMethod::Post)
 		.body(body.as_bytes())
-		.header("Content-Type", "application/json")
-		.header("Accept-Language", "zh-TW")
-		.header("Origin", WWW_URL)
-		.header("Referer", WWW_URL)
-		.header("credentials", "include");
+		.header("Content-Type", "application/json");
 
 	let cookie = defaults_get("cookie")
         .and_then(|v| v.as_string())
