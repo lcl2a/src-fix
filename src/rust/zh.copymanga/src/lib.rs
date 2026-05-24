@@ -1,273 +1,125 @@
 #![no_std]
-extern crate alloc;
+
+mod html;
+mod json;
+mod net;
+
+#[panic_handler]
+fn panic(_info: &core::panic::PanicInfo) -> ! {
+	loop {}
+}
+
+#[no_mangle]
+extern "C" fn abort() {
+	loop {}
+}
 
 use aidoku::{
-	error::Result,
-	helpers::substring::Substring,
-	prelude::*,
-	std::{json, String, Vec},
-	Chapter, Filter, FilterType, Listing, Manga, MangaContentRating, MangaPageResult, MangaViewer,
-	Page,
+	Chapter, DeepLinkHandler, DeepLinkResult, DynamicFilters, Filter, FilterValue, Manga,
+	MangaPageResult, Page, Result, Source,
+	alloc::{String, Vec},
+	imports::std::send_partial_result,
+	register_source,
 };
-use alloc::string::ToString;
+use html::{ChapterPage as _, FiltersPage as _, GenresPage as _, KeyPage as _, MangaPage as _};
+use json::{chapter_list, search};
+use net::Url;
 
-mod crypto;
-mod helper;
-mod parser;
+struct Copymanga;
 
-const FILTER_THEME: [&str; 61] = [
-	"",
-	"aiqing",
-	"huanlexiang",
-	"maoxian",
-	"qihuan",
-	"baihe",
-	"xiaoyuan",
-	"kehuan",
-	"dongfang",
-	"danmei",
-	"shenghuo",
-	"gedou",
-	"qingxiaoshuo",
-	"xuanyi",
-	"qita",
-	"shengui",
-	"zhichang",
-	"mengxi",
-	"teenslove",
-	"zhiyu",
-	"changtiao",
-	"sige",
-	"jiecao",
-	"jianniang",
-	"jingji",
-	"gaoxiao",
-	"weiniang",
-	"rexue",
-	"lizhi",
-	"hougong",
-	"meishi",
-	"xingzhuanhuan",
-	"zhentan",
-	"COLOR",
-	"aa",
-	"yinyuewudao",
-	"yishijie",
-	"zhanzheng",
-	"lishi",
-	"jingsong",
-	"jizhan",
-	"mohuan",
-	"dushi",
-	"chuanyue",
-	"kongbu",
-	"comiket100",
-	"chongsheng",
-	"comiket99",
-	"comiket97",
-	"comiket101",
-	"comiket96",
-	"zhaixi",
-	"wuxia",
-	"shengcun",
-	"C98",
-	"comiket95",
-	"fate",
-	"zhuansheng",
-	"Uncensored",
-	"xianxia",
-	"loveLive",
-];
-const FILTER_TOP: [&str; 4] = ["", "japan", "korea", "west"];
-const FILTER_ORDERING: [&str; 2] = ["popular", "datetime_updated"];
+impl Source for Copymanga {
+	fn new() -> Self {
+		Self
+	}
 
-#[get_manga_list]
-fn get_manga_list(filters: Vec<Filter>, page: i32) -> Result<MangaPageResult> {
-	let mut query = String::new();
-	let mut theme = String::new();
-	let mut top = String::new();
-	let mut ordering = String::new();
+	fn get_search_manga_list(
+		&self,
+		query: Option<String>,
+		page: i32,
+		filters: Vec<FilterValue>,
+	) -> Result<MangaPageResult> {
+		let url = Url::from_query_or_filters(query.as_deref(), page, &filters)?;
+		let request = url.request()?;
+		let manga_page_result = if url.is_filters() {
+			request.html()?.manga_page_result()?
+		} else {
+			request.json_owned::<search::Root>()?.into()
+		};
+		Ok(manga_page_result)
+	}
 
-	for filter in filters {
-		match filter.kind {
-			FilterType::Title => {
-				query = filter.value.as_string()?.read();
+	fn get_manga_update(
+		&self,
+		mut manga: Manga,
+		needs_details: bool,
+		needs_chapters: bool,
+	) -> Result<Manga> {
+		let manga_page = Url::manga(&manga.key).request()?.html()?;
+		if needs_details {
+			manga_page.update_details(&mut manga)?;
+
+			if needs_chapters {
+				send_partial_result(&manga);
+			} else {
+				return Ok(manga);
 			}
-			FilterType::Select => {
-				let index = filter.value.as_int()? as usize;
-				match filter.name.as_str() {
-					"题材" => {
-						theme = FILTER_THEME[index].to_string();
-					}
-					"地区" => {
-						top = FILTER_TOP[index].to_string();
-					}
-					_ => continue,
+		}
+
+		let key = manga_page.key()?;
+		manga.chapters = Url::chapter_list(&manga.key)
+			.request()?
+			.header("dnts", manga_page.dnt().as_deref().unwrap_or("2"))
+			.json_owned::<chapter_list::Root>()?
+			.chapters(&key)?;
+
+		Ok(manga)
+	}
+
+	fn get_page_list(&self, manga: Manga, chapter: Chapter) -> Result<Vec<Page>> {
+		Url::chapter(&manga.key, &chapter.key)
+			.request()?
+			.html()?
+			.pages()
+	}
+}
+
+impl DeepLinkHandler for Copymanga {
+	fn handle_deep_link(&self, url: String) -> Result<Option<DeepLinkResult>> {
+		let mut splits = url.split('/').skip(3);
+		let deep_link_result = match splits.next() {
+			Some("comic") => match (splits.next(), splits.next(), splits.next()) {
+				(Some(key), None, None) => Some(DeepLinkResult::Manga { key: key.into() }),
+				(Some(manga_key), Some("chapter"), Some(key)) => Some(DeepLinkResult::Chapter {
+					manga_key: manga_key.into(),
+					key: key.into(),
+				}),
+				_ => None,
+			},
+
+			Some("h5") => match (splits.next(), splits.next(), splits.next()) {
+				(Some("details"), Some("comic"), Some(key)) => {
+					Some(DeepLinkResult::Manga { key: key.into() })
 				}
-			}
-			FilterType::Sort => {
-				let value = match filter.value.as_object() {
-					Ok(value) => value,
-					Err(_) => continue,
-				};
-				let index = value.get("index").as_int()? as usize;
-				let ascending = value.get("ascending").as_bool().unwrap_or(false);
-				ordering.push_str(if ascending { "" } else { "-" });
-				ordering.push_str(FILTER_ORDERING[index]);
-			}
-			_ => continue,
-		}
+				(Some("comicContent"), Some(manga_key), Some(key)) => {
+					Some(DeepLinkResult::Chapter {
+						manga_key: manga_key.into(),
+						key: key.into(),
+					})
+				}
+				_ => None,
+			},
+
+			_ => None,
+		};
+		Ok(deep_link_result)
 	}
-
-	let url = if query.is_empty() {
-		helper::gen_explore_url(theme, top, ordering, page)
-	} else {
-		helper::gen_search_url(query, page)
-	};
-
-	let json = helper::get_json(url);
-	let data = json.get("results").as_object()?;
-	let list = data.get("list").as_array()?;
-
-	Ok(MangaPageResult {
-		manga: parser::parse_manga_list(list),
-		has_more: parser::has_more(data),
-	})
 }
 
-#[get_manga_listing]
-fn get_manga_listing(listing: Listing, page: i32) -> Result<MangaPageResult> {
-	let mut date_type = String::new();
-	let mut is_recs = false;
-	let mut is_newest = false;
-
-	match listing.name.as_str() {
-		"日榜" => {
-			date_type.push_str("day");
-		}
-		"周榜" => {
-			date_type.push_str("week");
-		}
-		"月榜" => {
-			date_type.push_str("month");
-		}
-		"总榜" => {
-			date_type.push_str("total");
-		}
-		"编辑推荐" => {
-			is_recs = true;
-		}
-		"全新上架" => {
-			is_newest = true;
-		}
-		_ => return get_manga_list(Vec::new(), page),
+impl DynamicFilters for Copymanga {
+	fn get_dynamic_filters(&self) -> Result<Vec<Filter>> {
+		let genre = Url::GenresPage.request()?.html()?.filter()?.into();
+		Ok([genre].into())
 	}
-
-	let url = if !date_type.is_empty() {
-		helper::gen_rank_url(date_type, page)
-	} else if is_recs {
-		helper::gen_recs_url(page)
-	} else if is_newest {
-		helper::gen_newest_url(page)
-	} else {
-		String::new()
-	};
-
-	let json = helper::get_json(url);
-	let data = json.get("results").as_object()?;
-	let list = data.get("list").as_array()?;
-
-	Ok(MangaPageResult {
-		manga: parser::parse_manga_list(list),
-		has_more: parser::has_more(data),
-	})
 }
 
-#[get_manga_details]
-fn get_manga_details(id: String) -> Result<Manga> {
-	let url = helper::gen_manga_url(id.clone());
-	let html = helper::get_html(url.clone());
-	let cover = html
-		.select(".comicParticulars-left-img>img")
-		.attr("data-src")
-		.read();
-	let title = html.select("h6").text().read();
-	let author = html
-		.select(".comicParticulars-right-txt>a")
-		.array()
-		.map(|a| a.as_node().unwrap().text().read())
-		.collect::<Vec<String>>()
-		.join(", ");
-	let artist = String::new();
-	let description = html.select(".intro").text().read();
-	let categories = html
-		.select(".comicParticulars-tag>a")
-		.array()
-		.map(|a| a.as_node().unwrap().text().read().replace("#", ""))
-		.collect::<Vec<String>>();
-	let full_title = html.select("title").text().read();
-	let status = if full_title.contains("連載中") {
-		aidoku::MangaStatus::Ongoing
-	} else if full_title.contains("已完結") {
-		aidoku::MangaStatus::Completed
-	} else {
-		aidoku::MangaStatus::Unknown
-	};
-	let nsfw = MangaContentRating::Safe;
-	let viewer = MangaViewer::Rtl;
-
-	Ok(Manga {
-		id,
-		cover,
-		title,
-		author,
-		artist,
-		description,
-		url,
-		categories,
-		status,
-		nsfw,
-		viewer,
-	})
-}
-
-#[get_chapter_list]
-fn get_chapter_list(id: String) -> Result<Vec<Chapter>> {
-	let manga_url = helper::gen_manga_url(id.clone());
-	let text = helper::get_text(manga_url);
-	let key = text
-		.substring_after("var ccx = '")
-		.unwrap()
-		.substring_before("'")
-		.unwrap()
-		.to_string();
-	let url = helper::gen_chapter_list_url(id);
-	let json = helper::get_json(url);
-	let data = json.get("results").as_string()?.read();
-	let data = helper::decrypt(data, key);
-	let data = json::parse(data)?.as_object()?;
-
-	Ok(parser::parse_chapter_list(data))
-}
-
-#[get_page_list]
-fn get_page_list(manga_id: String, chapter_id: String) -> Result<Vec<Page>> {
-	let url = helper::gen_page_list_url(manga_id, chapter_id);
-	let text = helper::get_text(url);
-	let key = text
-		.substring_after("var ccy = '")
-		.unwrap()
-		.substring_before("'")
-		.unwrap()
-		.to_string();
-	let data = text
-		.substring_after("contentKey=\"")
-		.unwrap()
-		.substring_before("\"")
-		.unwrap()
-		.to_string();
-	let data = helper::decrypt(data, key);
-	let data = json::parse(data)?.as_array()?;
-
-	Ok(parser::parse_page_list(data))
-}
+register_source!(Copymanga, DeepLinkHandler, DynamicFilters);

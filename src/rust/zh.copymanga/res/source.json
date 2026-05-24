@@ -1,30 +1,23 @@
 {
-  "info": {
-    "id": "zh.copymanga",
-    "lang": "zh",
-    "name": "拷贝漫画",
-    "version": 12,
-    "url": "https://www.mangacopy.com",
-    "nsfw": 1
-  },
-  "listings": [
-    {
-      "name": "日榜"
-    },
-    {
-      "name": "周榜"
-    },
-    {
-      "name": "月榜"
-    },
-    {
-      "name": "总榜"
-    },
-    {
-      "name": "编辑推荐"
-    },
-    {
-      "name": "全新上架"
-    }
-  ]
+	"info": {
+		"id": "zh.copymanga",
+		"name": "拷貝漫畫",
+		"version": 18,
+		"urls": [
+			"https://www.2026copy.com",
+			"https://2026copy.com",
+			"https://www.2025copy.com",
+			"https://2025copy.com",
+			"https://www.copy20.com",
+			"https://copy20.com"
+		],
+		"contentRating": 1,
+		"languages": ["zh"]
+	},
+	"config": {
+		"allowsBaseUrlSelect": true,
+		"hidesFiltersWhileSearching": true,
+		"supportsAuthorSearch": true,
+		"supportsTagSearch": true
+	}
 }
