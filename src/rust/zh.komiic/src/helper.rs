@@ -23,10 +23,8 @@ pub fn gen_chapter_url(manga_id: String, chapter_id: String) -> String {
 }
 
 pub fn gen_page_url(manga_id: String, chapter_id: String, page_id: String) -> String {
-	format!(
-		"{}/api/image/{}?mangaId={}&chapterId={}",
-		WWW_URL, page_id, manga_id, chapter_id
-	)
+    // Try direct CDN access instead of API
+    format!("https://public.komiic.com/images/{}/{}", chapter_id, page_id)
 }
 
 pub fn get_json(body: String) -> ObjectRef {

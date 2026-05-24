@@ -1,6 +1,7 @@
 #![no_std]
 extern crate alloc;
 
+use alloc::vec;
 use aidoku::{
 	error::Result,
 	prelude::*,
@@ -156,12 +157,23 @@ fn get_chapter_list(id: String) -> Result<Vec<Chapter>> {
 
 #[get_page_list]
 fn get_page_list(manga_id: String, chapter_id: String) -> Result<Vec<Page>> {
-	let body = helper::gen_images_body_string(chapter_id.clone());
-	let json = helper::get_json(body);
-	let data = json.get("data").as_object()?;
-	let list = data.get("imagesByChapterId").as_array()?;
-
-	Ok(parser::parse_page_list(manga_id, chapter_id, list))
+    let body = helper::gen_images_body_string(chapter_id.clone());
+    let json = helper::get_json(body);
+    let data = json.get("data").as_object()?;
+    let list = data.get("imagesByChapterId").as_array()?;
+    let pages = parser::parse_page_list(manga_id, chapter_id, list);
+    
+    // TEST: Replace first page with a known working image
+    if !pages.is_empty() {
+        let test_pages = vec![Page {
+            index: 0,
+            url: "https://httpbin.org/image/jpeg".to_string(),
+            ..Default::default()
+        }];
+        return Ok(test_pages);
+    }
+    
+    Ok(pages)
 }
 
 #[modify_image_request]
@@ -173,50 +185,36 @@ fn modify_image_request(request: Request) -> Request {
         .map(|s| s.read())
         .unwrap_or_default();
     
-    // Generate the correct referer from the URL
-    let referer = if url.contains("/api/image/") {
-        // Extract IDs from the URL
-        if let (Some(manga_id), Some(chapter_id)) = (extract_manga_id(&url), extract_chapter_id(&url)) {
-            format!("{}/comic/{}/chapter/{}/images/all", WWW_URL, manga_id, chapter_id)
-        } else {
-            WWW_URL.to_string()
-        }
+    // Extract IDs from URL
+    let referer = if let (Some(manga_id), Some(chapter_id)) = (extract_manga_id(&url), extract_chapter_id(&url)) {
+        format!("{}/comic/{}/chapter/{}/images/all", WWW_URL, manga_id, chapter_id)
     } else {
         WWW_URL.to_string()
     };
     
-    let mut request = request
+    let request = request
         .header("Referer", &referer)
         .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
         .header("Accept", "image/webp,image/apng,image/*,*/*;q=0.8")
         .header("Accept-Language", "zh-CN,zh;q=0.9");
     
     if !cookie.is_empty() {
-        request = request.header("Cookie", &cookie);
+        request.header("Cookie", &cookie)
+    } else {
+        request
     }
-    
-    request
 }
 
-// Add these helper functions
 fn extract_manga_id(url: &str) -> Option<String> {
     url.split('?').nth(1).and_then(|query| {
-        for param in query.split('&') {
-            if param.starts_with("mangaId=") {
-                return Some(param[8..].to_string());
-            }
-        }
-        None
+        query.split('&').find(|param| param.starts_with("mangaId="))
+            .map(|param| param[8..].to_string())
     })
 }
 
 fn extract_chapter_id(url: &str) -> Option<String> {
     url.split('?').nth(1).and_then(|query| {
-        for param in query.split('&') {
-            if param.starts_with("chapterId=") {
-                return Some(param[10..].to_string());
-            }
-        }
-        None
+        query.split('&').find(|param| param.starts_with("chapterId="))
+            .map(|param| param[10..].to_string())
     })
 }
