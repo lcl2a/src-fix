@@ -4,7 +4,7 @@ extern crate alloc;
 use aidoku::{
 	error::Result,
 	prelude::*,
-	std::{net::Request, String, Vec},
+	std::{defaults::defaults_get, net::Request, String, Vec},
 	Chapter, Filter, FilterType, Listing, Manga, MangaPageResult, Page,
 };
 use alloc::string::ToString;
@@ -188,8 +188,19 @@ fn modify_image_request(request: Request) -> Request {
         WWW_URL.to_string()
     };
     
-    // Match your working curl command exactly
-    request
+    let mut request = request
         .header("Referer", &referer)
-        .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+        .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+    
+    // HIER: Cookie aus Settings für Image-Requests!
+    let cookie = defaults_get("cookie")
+        .and_then(|v| v.as_string())
+        .map(|s| s.read())
+        .unwrap_or_default();
+    
+    if !cookie.is_empty() {
+        request = request.header("Cookie", &cookie);
+    }
+    
+    request
 }
