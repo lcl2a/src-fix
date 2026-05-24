@@ -1,18 +1,19 @@
 #![no_std]
+#![no_main]
 
 mod html;
 mod json;
 mod net;
 
-#[panic_handler]
-fn panic(_info: &core::panic::PanicInfo) -> ! {
-	loop {}
+#[cfg(target_arch = "wasm32")]
+#[unsafe(no_mangle)]
+pub extern "C" fn abort() -> ! {
+    loop {}
 }
 
-#[no_mangle]
-extern "C" fn abort() {
-	loop {}
-}
+#[cfg(target_arch = "wasm32")]
+#[unsafe(no_mangle)]
+pub extern "C" fn print(_string: *const u8, _size: usize) {}
 
 use aidoku::{
 	Chapter, DeepLinkHandler, DeepLinkResult, DynamicFilters, Filter, FilterValue, Manga,
