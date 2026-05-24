@@ -4,7 +4,7 @@ extern crate alloc;
 use aidoku::{
 	error::Result,
 	prelude::*,
-	std::{defaults::defaults_get, net::Request, String, Vec},
+	std::{net::Request, String, Vec},
 	Chapter, Filter, FilterType, Listing, Manga, MangaPageResult, Page,
 };
 use alloc::string::ToString;
@@ -192,15 +192,12 @@ fn modify_image_request(request: Request) -> Request {
         .header("Referer", &referer)
         .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
     
-    // HIER: Cookie aus Settings für Image-Requests!
-    let cookie = defaults_get("cookie")
-        .and_then(|v| v.as_string())
-        .map(|s| s.read())
-        .unwrap_or_default();
-    
+    let cookie = helper::get_active_cookie();
     if !cookie.is_empty() {
         request = request.header("Cookie", &cookie);
     }
+
+    helper::increment_image_count();
     
     request
 }

@@ -1,12 +1,24 @@
 [
   {
     "type": "group",
-    "title": "Cookie",
+    "title": "Account Cookie",
     "items": [
       {
         "type": "text",
-        "key": "cookie",
-        "placeholder": "Cookie (可选，用于提高每日阅读限额)",
+        "key": "cookie1",
+        "placeholder": "Account Cookie (可选，用于提高每日阅读限额)",
+        "default": ""
+      },
+      {
+        "type": "text",
+        "key": "cookie2",
+        "placeholder": "Account Cookie (可选，用于提高每日阅读限额)",
+        "default": ""
+      },
+      {
+        "type": "text",
+        "key": "cookie3",
+        "placeholder": "Account Cookie (可选，用于提高每日阅读限额)",
         "default": ""
       }
     ]

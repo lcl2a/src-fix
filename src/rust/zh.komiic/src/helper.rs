@@ -11,6 +11,41 @@ use alloc::string::ToString;
 const WWW_URL: &str = "https://komiic.com";
 const API_URL: &str = "https://komiic.com/api/query";
 
+static mut CURRENT_COOKIE: usize = 0;
+static mut IMAGE_COUNT: u32 = 0;
+const MAX_PER_ACCOUNT: u32 = 775;
+
+pub fn get_active_cookie() -> String {
+    unsafe {
+        if IMAGE_COUNT >= MAX_PER_ACCOUNT {
+            CURRENT_COOKIE += 1;
+            IMAGE_COUNT = 0;
+            
+            let next_key = format!("cookie{}", CURRENT_COOKIE + 1);
+            let next_cookie = defaults_get(&next_key)
+                .and_then(|v| v.as_string())
+                .map(|s| s.read())
+                .unwrap_or_default();
+            
+            if next_cookie.is_empty() {
+                CURRENT_COOKIE = 0;
+            }
+        }
+        
+        let key = format!("cookie{}", CURRENT_COOKIE + 1);
+        defaults_get(&key)
+            .and_then(|v| v.as_string())
+            .map(|s| s.read())
+            .unwrap_or_default()
+    }
+}
+
+pub fn increment_image_count() {
+    unsafe {
+        IMAGE_COUNT += 1;
+    }
+}
+
 pub fn gen_manga_url(id: String) -> String {
 	format!("{}/comic/{}", WWW_URL, id)
 }
@@ -39,19 +74,12 @@ pub fn get_json(body: String) -> ObjectRef {
 		.header("Origin", WWW_URL)
 		.header("Referer", WWW_URL);
 
-	let cookie = defaults_get("cookie")
-        .and_then(|v| v.as_string())
-        .map(|s| s.read())
-        .unwrap_or_default();
-	if !cookie.is_empty() {
-		request = request.header("Cookie", &cookie);
-	}
+	  let cookie = get_active_cookie();
+    if !cookie.is_empty() {
+        request = request.header("Cookie", &cookie);
+    }
 
-	request
-		.json()
-		.unwrap()
-		.as_object()
-		.unwrap()
+    request.json().unwrap().as_object().unwrap()
 }
 
 pub fn gen_category_body_string(
