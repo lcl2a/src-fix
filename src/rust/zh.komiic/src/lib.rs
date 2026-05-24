@@ -168,29 +168,16 @@ fn get_page_list(manga_id: String, chapter_id: String) -> Result<Vec<Page>> {
 fn modify_image_request(request: Request) -> Request {
     let url = request.url().read();
     
-    let cookie = defaults_get("cookie")
-        .and_then(|v| v.as_string())
-        .map(|s| s.read())
-        .unwrap_or_default();
-    
-    // Generate the correct referer from the URL
-    let referer = if url.contains("/api/image/") {
-        // Extract manga_id and chapter_id from URL
-        let manga_id = url.split('?')
-            .nth(1)
-            .and_then(|query| {
-                query.split('&')
-                    .find(|param| param.starts_with("mangaId="))
-                    .map(|param| param[8..].to_string())
-            });
+    // Extract manga_id and chapter_id from URL for referer
+    let referer = if let Some(query_start) = url.find('?') {
+        let query = &url[query_start + 1..];
+        let manga_id = query.split('&')
+            .find(|param| param.starts_with("mangaId="))
+            .map(|param| param[8..].to_string());
             
-        let chapter_id = url.split('?')
-            .nth(1)
-            .and_then(|query| {
-                query.split('&')
-                    .find(|param| param.starts_with("chapterId="))
-                    .map(|param| param[10..].to_string())
-            });
+        let chapter_id = query.split('&')
+            .find(|param| param.starts_with("chapterId="))
+            .map(|param| param[10..].to_string());
         
         if let (Some(manga_id), Some(chapter_id)) = (manga_id, chapter_id) {
             format!("{}/comic/{}/chapter/{}/images/all", WWW_URL, manga_id, chapter_id)
@@ -201,22 +188,8 @@ fn modify_image_request(request: Request) -> Request {
         WWW_URL.to_string()
     };
     
-    let mut request = request
-        .header("Referer", &referer)
-        .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-        .header("Accept", "image/webp,image/apng,image/*,*/*;q=0.8")
-        .header("Accept-Language", "zh-CN,zh;q=0.9");
-    
-    // Add additional headers that might be required
-    request = request
-        .header("Origin", WWW_URL)
-        .header("Sec-Fetch-Dest", "image")
-        .header("Sec-Fetch-Mode", "no-cors")
-        .header("Sec-Fetch-Site", "same-origin");
-    
-    if !cookie.is_empty() {
-        request = request.header("Cookie", &cookie);
-    }
-    
+    // Match your working curl command exactly
     request
+        .header("Referer", &referer)
+        .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
 }
