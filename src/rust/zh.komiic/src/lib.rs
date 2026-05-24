@@ -175,7 +175,24 @@ fn modify_image_request(request: Request) -> Request {
     
     // Generate the correct referer from the URL
     let referer = if url.contains("/api/image/") {
-        if let (Some(manga_id), Some(chapter_id)) = (extract_manga_id(&url), extract_chapter_id(&url)) {
+        // Extract manga_id and chapter_id from URL
+        let manga_id = url.split('?')
+            .nth(1)
+            .and_then(|query| {
+                query.split('&')
+                    .find(|param| param.starts_with("mangaId="))
+                    .map(|param| param[8..].to_string())
+            });
+            
+        let chapter_id = url.split('?')
+            .nth(1)
+            .and_then(|query| {
+                query.split('&')
+                    .find(|param| param.starts_with("chapterId="))
+                    .map(|param| param[10..].to_string())
+            });
+        
+        if let (Some(manga_id), Some(chapter_id)) = (manga_id, chapter_id) {
             format!("{}/comic/{}/chapter/{}/images/all", WWW_URL, manga_id, chapter_id)
         } else {
             WWW_URL.to_string()
@@ -195,18 +212,4 @@ fn modify_image_request(request: Request) -> Request {
     }
     
     request
-}
-
-fn extract_manga_id(url: &str) -> Option<String> {
-    url.split('?').nth(1).and_then(|query| {
-        query.split('&').find(|param| param.starts_with("mangaId="))
-            .map(|param| param[8..].to_string())
-    })
-}
-
-fn extract_chapter_id(url: &str) -> Option<String> {
-    url.split('?').nth(1).and_then(|query| {
-        query.split('&').find(|param| param.starts_with("chapterId="))
-            .map(|param| param[10..].to_string())
-    })
 }
