@@ -1,4 +1,3 @@
-/*
 use crate::helper;
 use aidoku::{
 	std::{ArrayRef, ObjectRef, String, Vec},
@@ -119,8 +118,8 @@ pub fn parse_page_list(manga_id: String, chapter_id: String, page_list: ArrayRef
     for (index, item) in page_list.enumerate() {
         let page = item.as_object().unwrap();
         let index = index as i32;
-        let id = page.get("kid").as_string().unwrap().read();
-        let url = helper::gen_page_url(manga_id.clone(), chapter_id.clone(), id);
+        let kid = page.get("kid").as_string().unwrap().read();
+        let url = helper::gen_page_url(manga_id.clone(), chapter_id.clone(), kid);
         
         pages.push(Page {
             index,
@@ -131,4 +130,3 @@ pub fn parse_page_list(manga_id: String, chapter_id: String, page_list: ArrayRef
 
     pages
 }
-*/
