@@ -56,10 +56,10 @@
   {
     "id": "zh.copymanga",
     "name": "拷贝漫画",
-    "file": "zh.copymanga-v12.aix",
-    "icon": "zh.copymanga-v12.png",
+    "file": "zh.copymanga-v486.aix",
+    "icon": "zh.copymanga-v486.png",
     "lang": "zh",
-    "version": 12,
+    "version": 486,
     "nsfw": 1
   },
   {
