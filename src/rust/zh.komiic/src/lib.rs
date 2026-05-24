@@ -6,13 +6,13 @@ use aidoku::{
 	error::Result,
 	prelude::*,
 	std::{defaults::defaults_get, net::Request, String, Vec},
-	Chapter, Filter, FilterType, Listing, Manga, MangaPageResult, Page,
+	Chapter, Filter, FilterType, Listing, Manga, MangaContentRating, MangaPageResult, MangaStatus, MangaViewer, Page,
 };
 use alloc::string::ToString;
 
 const WWW_URL: &str = "https://komiic.com";
 
-#[cfg(target_arch = "wasm32")] // important
+#[cfg(target_arch = "wasm32")]
 #[no_mangle]
 pub extern "C" fn abort() -> ! {
     loop {}
@@ -119,7 +119,7 @@ fn get_manga_listing(listing: Listing, page: i32) -> Result<MangaPageResult> {
     
     if is_recent_update {
         let list = data.get("recentUpdate").as_array()?;
-        let list_len = list.len(); // Get length before moving
+        let list_len = list.len();
         let mangas = parser::parse_manga_list(list);
         Ok(MangaPageResult {
             manga: mangas,
@@ -137,7 +137,7 @@ fn get_manga_listing(listing: Listing, page: i32) -> Result<MangaPageResult> {
 
 #[get_manga_details]
 fn get_manga_details(id: String) -> Result<Manga> {
-	let body = helper::gen_id_body_string(id);
+	let body = helper::gen_id_body_string(id.clone());
 	let json = helper::get_json(body);
 	let data = json.get("data").as_object()?;
 	let data = data.get("comicById").as_object()?;
@@ -147,33 +147,58 @@ fn get_manga_details(id: String) -> Result<Manga> {
 
 #[get_chapter_list]
 fn get_chapter_list(id: String) -> Result<Vec<Chapter>> {
-	let body = helper::gen_chapter_body_string(id.clone());
-	let json = helper::get_json(body);
-	let data = json.get("data").as_object()?;
-	let list = data.get("chaptersByComicId").as_array()?;
-
-	Ok(parser::parse_chapter_list(id, list))
+    // TEST: Return hardcoded chapters for testing
+    let test_chapters = vec![
+        Chapter {
+            id: "7380".to_string(),
+            title: "Chapter 1 (Test)".to_string(),
+            volume: -1.0,
+            chapter: 1.0,
+            url: format!("{}/comic/{}/chapter/7380/images/all", WWW_URL, id),
+            scanlator: String::new(),
+            lang: String::new(),
+            date_updated: 0.0,
+        },
+        Chapter {
+            id: "7381".to_string(),
+            title: "Chapter 2 (Test)".to_string(),
+            volume: -1.0,
+            chapter: 2.0,
+            url: format!("{}/comic/{}/chapter/7381/images/all", WWW_URL, id),
+            scanlator: String::new(),
+            lang: String::new(),
+            date_updated: 0.0,
+        },
+    ];
+    
+    Ok(test_chapters)
 }
 
 #[get_page_list]
 fn get_page_list(manga_id: String, chapter_id: String) -> Result<Vec<Page>> {
-    let body = helper::gen_images_body_string(chapter_id.clone());
-    let json = helper::get_json(body);
-    let data = json.get("data").as_object()?;
-    let list = data.get("imagesByChapterId").as_array()?;
-    let pages = parser::parse_page_list(manga_id, chapter_id, list);
-    
-    // TEST: Replace first page with a known working image
-    if !pages.is_empty() {
-        let test_pages = vec![Page {
+    // TEST: Return hardcoded test images
+    let test_pages = vec![
+        Page {
             index: 0,
             url: "https://httpbin.org/image/jpeg".to_string(),
-            ..Default::default()
-        }];
-        return Ok(test_pages);
-    }
+            base64: String::new(),
+            text: String::new(),
+        },
+        Page {
+            index: 1,
+            url: "https://httpbin.org/image/png".to_string(),
+            base64: String::new(),
+            text: String::new(),
+        },
+        Page {
+            index: 2,
+            url: "https://httpbin.org/image/jpeg".to_string(),
+            base64: String::new(),
+            text: String::new(),
+        },
+    ];
     
-    Ok(pages)
+    Ok(test_pages)
 }
 
 #[modify_image_request]
@@ -185,24 +210,27 @@ fn modify_image_request(request: Request) -> Request {
         .map(|s| s.read())
         .unwrap_or_default();
     
-    // Extract IDs from URL
-    let referer = if let (Some(manga_id), Some(chapter_id)) = (extract_manga_id(&url), extract_chapter_id(&url)) {
-        format!("{}/comic/{}/chapter/{}/images/all", WWW_URL, manga_id, chapter_id)
+    let referer = if url.contains("/api/image/") {
+        if let (Some(manga_id), Some(chapter_id)) = (extract_manga_id(&url), extract_chapter_id(&url)) {
+            format!("{}/comic/{}/chapter/{}/images/all", WWW_URL, manga_id, chapter_id)
+        } else {
+            WWW_URL.to_string()
+        }
     } else {
         WWW_URL.to_string()
     };
     
-    let request = request
+    let mut request = request
         .header("Referer", &referer)
         .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
         .header("Accept", "image/webp,image/apng,image/*,*/*;q=0.8")
         .header("Accept-Language", "zh-CN,zh;q=0.9");
     
     if !cookie.is_empty() {
-        request.header("Cookie", &cookie)
-    } else {
-        request
+        request = request.header("Cookie", &cookie);
     }
+    
+    request
 }
 
 fn extract_manga_id(url: &str) -> Option<String> {
