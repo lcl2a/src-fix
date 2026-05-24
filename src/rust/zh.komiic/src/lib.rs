@@ -9,6 +9,8 @@ use aidoku::{
 };
 use alloc::string::ToString;
 
+const WWW_URL: &str = "https://komiic.com";
+
 #[cfg(target_arch = "wasm32")] // important
 #[no_mangle]
 pub extern "C" fn abort() -> ! {
@@ -165,21 +167,56 @@ fn get_page_list(manga_id: String, chapter_id: String) -> Result<Vec<Page>> {
 #[modify_image_request]
 fn modify_image_request(request: Request) -> Request {
     let url = request.url().read();
-
+    
     let cookie = defaults_get("cookie")
         .and_then(|v| v.as_string())
         .map(|s| s.read())
         .unwrap_or_default();
-
-    let request = request
-        .header("Referer", &helper::gen_referer(url))
+    
+    // Generate the correct referer from the URL
+    let referer = if url.contains("/api/image/") {
+        // Extract IDs from the URL
+        if let (Some(manga_id), Some(chapter_id)) = (extract_manga_id(&url), extract_chapter_id(&url)) {
+            format!("{}/comic/{}/chapter/{}/images/all", WWW_URL, manga_id, chapter_id)
+        } else {
+            WWW_URL.to_string()
+        }
+    } else {
+        WWW_URL.to_string()
+    };
+    
+    let mut request = request
+        .header("Referer", &referer)
         .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
         .header("Accept", "image/webp,image/apng,image/*,*/*;q=0.8")
-        .header("Accept-Language", "en-US,en;q=0.9");
-
-    if cookie.is_empty() {
-        request
-    } else {
-        request.header("Cookie", &cookie)
+        .header("Accept-Language", "zh-CN,zh;q=0.9");
+    
+    if !cookie.is_empty() {
+        request = request.header("Cookie", &cookie);
     }
+    
+    request
+}
+
+// Add these helper functions
+fn extract_manga_id(url: &str) -> Option<String> {
+    url.split('?').nth(1).and_then(|query| {
+        for param in query.split('&') {
+            if param.starts_with("mangaId=") {
+                return Some(param[8..].to_string());
+            }
+        }
+        None
+    })
+}
+
+fn extract_chapter_id(url: &str) -> Option<String> {
+    url.split('?').nth(1).and_then(|query| {
+        for param in query.split('&') {
+            if param.starts_with("chapterId=") {
+                return Some(param[10..].to_string());
+            }
+        }
+        None
+    })
 }

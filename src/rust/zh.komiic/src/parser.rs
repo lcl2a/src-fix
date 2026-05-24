@@ -113,20 +113,20 @@ pub fn parse_chapter_list(manga_id: String, chapter_list: ArrayRef) -> Vec<Chapt
 }
 
 pub fn parse_page_list(manga_id: String, chapter_id: String, page_list: ArrayRef) -> Vec<Page> {
-	let mut pages: Vec<Page> = Vec::new();
+    let mut pages: Vec<Page> = Vec::new();
 
-	for (index, item) in page_list.enumerate() {
-		let page = item.as_object().unwrap();
-		let index = index as i32;
-		let id = page.get("kid").as_string().unwrap().read();
-		let url = helper::gen_page_url(manga_id.clone(), chapter_id.clone(), id);
-		
-		pages.push(Page {
-			index,
-			url,
-			..Default::default()
-		})
-	}
+    for (index, item) in page_list.enumerate() {
+        let page = item.as_object().unwrap();
+        let index = index as i32;
+        let id = page.get("kid").as_string().unwrap().read();
+        let url = helper::gen_page_url(manga_id.clone(), chapter_id.clone(), id);
+        
+        pages.push(Page {
+            index,
+            url,
+            ..Default::default()
+        })
+    }
 
-	pages
+    pages
 }

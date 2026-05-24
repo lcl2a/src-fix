@@ -1,5 +1,4 @@
 use aidoku::{
-	helpers::substring::Substring,
 	prelude::*,
 	std::{
 		defaults::defaults_get,
@@ -28,19 +27,6 @@ pub fn gen_page_url(manga_id: String, chapter_id: String, page_id: String) -> St
 		"{}/api/image/{}?mangaId={}&chapterId={}",
 		WWW_URL, page_id, manga_id, chapter_id
 	)
-}
-
-pub fn gen_referer(image_url: String) -> String {
-	if image_url.starts_with(WWW_URL) && image_url.contains('?') {
-		if let Some(query) = image_url.substring_after("?") {
-			if let Some(manga_id) = query.substring_after("mangaId=").and_then(|s| s.substring_before("&")) {
-				if let Some(chapter_id) = query.substring_after("chapterId=") {
-					return gen_chapter_url(manga_id.to_string(), chapter_id.to_string());
-				}
-			}
-		}
-	}
-	WWW_URL.to_string()
 }
 
 pub fn get_json(body: String) -> ObjectRef {
