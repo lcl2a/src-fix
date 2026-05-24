@@ -89,44 +89,47 @@ fn get_manga_list(filters: Vec<Filter>, page: i32) -> Result<MangaPageResult> {
 
 #[get_manga_listing]
 fn get_manga_listing(listing: Listing, page: i32) -> Result<MangaPageResult> {
-	let mut is_recent_update = false;
-	let mut order_by = String::new();
+    let mut is_recent_update = false;
+    let mut order_by = String::new();
 
-	match listing.name.as_str() {
-		"最近更新" => {
-			is_recent_update = true;
-		}
-		"本月热门" => {
-			order_by = String::from("MONTH_VIEWS");
-		}
-		"历史热门" => {
-			order_by = String::from("VIEWS");
-		}
-		_ => return get_manga_list(Vec::new(), page),
-	}
+    match listing.name.as_str() {
+        "最近更新" => {
+            is_recent_update = true;
+        }
+        "本月热门" => {
+            order_by = String::from("MONTH_VIEWS");
+        }
+        "历史热门" => {
+            order_by = String::from("VIEWS");
+        }
+        _ => return get_manga_list(Vec::new(), page),
+    }
 
-	let body = if is_recent_update {
-		helper::gen_recent_update_body_string(page)
-	} else {
-		helper::gen_hot_body_string(order_by, page)
-	};
+    let body = if is_recent_update {
+        helper::gen_recent_update_body_string(page)
+    } else {
+        helper::gen_hot_body_string(order_by, page)
+    };
 
-	let json = helper::get_json(body);
-	let data = json.get("data").as_object()?;
-	let mangas;
-
-	if is_recent_update {
-		let list = data.get("recentUpdate").as_array()?;
-		mangas = parser::parse_manga_list(list);
-	} else {
-		let list = data.get("hotComics").as_array()?;
-		mangas = parser::parse_manga_list(list);
-	};
-
-	Ok(MangaPageResult {
-		manga: mangas,
-		has_more: true,
-	})
+    let json = helper::get_json(body);
+    let data = json.get("data").as_object()?;
+    
+    if is_recent_update {
+        let list = data.get("recentUpdate").as_array()?;
+        let list_len = list.len(); // Get length before moving
+        let mangas = parser::parse_manga_list(list);
+        Ok(MangaPageResult {
+            manga: mangas,
+            has_more: list_len == 20,
+        })
+    } else {
+        let list = data.get("hotComics").as_array()?;
+        let mangas = parser::parse_manga_list(list);
+        Ok(MangaPageResult {
+            manga: mangas,
+            has_more: false,
+        })
+    }
 }
 
 #[get_manga_details]

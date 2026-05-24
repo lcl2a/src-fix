@@ -103,43 +103,40 @@ pub fn gen_category_body_string(
 }
 
 pub fn gen_recent_update_body_string(page: i32) -> String {
-	format!(
-		r#"{{
+    format!(
+        r#"{{
       "operationName": "recentUpdate",
-    	"query": "query recentUpdate($pagination: Pagination!) {{\n  recentUpdate(pagination: $pagination) {{\n    id\n    title\n    status\n    year\n    imageUrl\n    authors {{\n      id\n      name\n      __typename\n    }}\n    categories {{\n      id\n      name\n      __typename\n    }}\n    dateUpdated\n    monthViews\n    views\n    favoriteCount\n    lastBookUpdate\n    lastChapterUpdate\n    __typename\n  }}\n}}\n",
-    	"variables": {{
+      "query": "query recentUpdate($pagination: Pagination!) {{ recentUpdate(pagination: $pagination) {{ id title status year imageUrl authors {{ id name }} categories {{ id name }} dateUpdated monthViews views favoriteCount lastBookUpdate lastChapterUpdate }} }}",
+      "variables": {{
         "pagination": {{
-            "asc": true,
-            "limit": {},
+            "asc": false,
+            "limit": 20,
             "offset": {},
             "orderBy": "DATE_UPDATED"
         }}
-    	}}
+      }}
     }}"#,
-		20,
-		(page - 1) * 20
-	)
+        (page - 1) * 20
+    )
 }
 
 pub fn gen_hot_body_string(order_by: String, page: i32) -> String {
-	format!(
-		r#"{{
+    format!(
+        r#"{{
       "operationName": "hotComics",
-    	"query": "query hotComics($pagination: Pagination!) {{\n  hotComics(pagination: $pagination) {{\n    id\n    title\n    status\n    year\n    imageUrl\n    authors {{\n      id\n      name\n      __typename\n    }}\n    categories {{\n      id\n      name\n      __typename\n    }}\n    dateUpdated\n    monthViews\n    views\n    favoriteCount\n    lastBookUpdate\n    lastChapterUpdate\n    __typename\n  }}\n}}\n",
-    	"variables": {{
+      "query": "query hotComics($pagination: Pagination!) {{ hotComics(pagination: $pagination) {{ id title status year imageUrl authors {{ id name }} categories {{ id name }} dateUpdated monthViews views favoriteCount lastBookUpdate lastChapterUpdate }} }}",
+      "variables": {{
         "pagination": {{
-            "asc": true,
-            "limit": {},
+            "asc": false,
+            "limit": 20,
             "offset": {},
-            "orderBy": "{}",
-            "status": ""
+            "orderBy": "{}"
         }}
-    	}}
+      }}
     }}"#,
-		20,
-		(page - 1) * 20,
-		order_by,
-	)
+        (page - 1) * 20,
+        order_by,
+    )
 }
 
 pub fn gen_search_body_string(query: String) -> String {
