@@ -125,6 +125,19 @@ impl MangaPage for Document {
 	}
 }
 
+pub fn simplified_title(document: &Document) -> Result<String> {
+	document
+		.try_select_first("li:contains(別名：) > p.comicParticulars-right-txt")?
+		.text()
+		.or_else(|| {
+			document
+				.try_select_first("h6")
+				.ok()
+				.and_then(|element| element.text())
+		})
+		.ok_or_else(|| error!("Text not found"))
+}
+
 pub trait KeyPage {
 	fn key(&self) -> Result<String>;
 }

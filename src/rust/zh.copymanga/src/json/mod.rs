@@ -2,7 +2,7 @@ pub mod chapter_list;
 pub mod page_list;
 pub mod search;
 
-use crate::net::Url;
+use crate::{html, net::Url};
 use aes::{
 	Aes128,
 	cipher::{BlockDecryptMut as _, KeyIvInit as _, block_padding::Pkcs7},
@@ -29,7 +29,15 @@ impl From<MangaItem> for Manga {
 
 		let key = item.path_word;
 
-		let title = item.name;
+		let mut title = item.name;
+		if let Some(simplified_title) = Url::manga(&key)
+			.request()
+			.ok()
+			.and_then(|request| request.html().ok())
+			.and_then(|document| html::simplified_title(&document).ok())
+		{
+			title = simplified_title;
+		}
 
 		let cover = item.cover.replace(".328x422.jpg", "");
 
