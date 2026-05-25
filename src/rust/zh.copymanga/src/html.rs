@@ -78,8 +78,13 @@ pub trait MangaPage {
 impl MangaPage for Document {
 	fn update_details(&self, manga: &mut Manga) -> Result<()> {
 		manga.title = self
-			.try_select_first("h6")?
+			.try_select_first("li:contains(別名：) > p.comicParticulars-right-txt")?
 			.text()
+			.or_else(|| {
+				self.try_select_first("h6")
+					.ok()
+					.and_then(|element| element.text())
+			})
 			.ok_or_else(|| error!("Text not found"))?;
 
 		manga.cover = self
