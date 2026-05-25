@@ -4,11 +4,10 @@ use crate::{
 };
 use aidoku::{
 	Manga, MangaPageResult, MangaStatus, Page, Result, SelectFilter,
-	alloc::{String, Vec, borrow::ToOwned as _, format},
+	alloc::{String, Vec, borrow::ToOwned as _},
 	error,
 	imports::{
 		html::{Document, Element, ElementList},
-		js::JsContext,
 	},
 };
 
@@ -48,11 +47,11 @@ pub trait FiltersPage {
 
 impl FiltersPage for Document {
 	fn manga_page_result(&self) -> Result<MangaPageResult> {
-		let single_quoted_json = self
+		let js_literal = self
 			.try_select_first("div.exemptComic-box")?
 			.attr("list")
 			.ok_or_else(|| error!("Attribute not found: `list`"))?;
-		let json = JsContext::new().eval(&format!("JSON.stringify({single_quoted_json})"))?;
+		let json = js_literal_to_json(&js_literal)?;
 		let entries = serde_json::from_str::<Vec<MangaItem>>(&json)?
 			.into_iter()
 			.map(Into::into)
@@ -69,6 +68,134 @@ impl FiltersPage for Document {
 			has_next_page,
 		})
 	}
+}
+
+fn js_literal_to_json(input: &str) -> Result<String> {
+	let mut output = String::with_capacity(input.len());
+	let mut chars = input.chars().peekable();
+
+	while let Some(ch) = chars.next() {
+		match ch {
+			'\'' => {
+				output.push('"');
+				loop {
+					let next = chars
+						.next()
+						.ok_or_else(|| error!("Unterminated single-quoted string"))?;
+
+					match next {
+						'\\' => {
+							output.push('\\');
+							let escaped = chars
+								.next()
+								.ok_or_else(|| error!("Invalid escape sequence"))?;
+							match escaped {
+								'\'' => output.push('\''),
+								'"' => output.push('"'),
+								'\\' => output.push('\\'),
+								'/' => output.push('/'),
+								'b' => output.push('b'),
+								'f' => output.push('f'),
+								'n' => output.push('n'),
+								'r' => output.push('r'),
+								't' => output.push('t'),
+								'u' => {
+									output.push('u');
+									for _ in 0..4 {
+										let digit = chars
+											.next()
+											.ok_or_else(|| error!("Invalid unicode escape"))?;
+										if !digit.is_ascii_hexdigit() {
+											return Err(error!("Invalid unicode escape"));
+										}
+										output.push(digit);
+									}
+								}
+								other => output.push(other),
+							}
+						}
+						'\'' => {
+							output.push('"');
+							break;
+						}
+						'"' => output.push_str("\\\""),
+						'\n' | '\r' => return Err(error!("Unterminated single-quoted string")),
+						other => output.push(other),
+					}
+				}
+			}
+			'"' => {
+				output.push('"');
+				loop {
+					let next = chars
+						.next()
+						.ok_or_else(|| error!("Unterminated double-quoted string"))?;
+
+					match next {
+						'\\' => {
+							output.push('\\');
+							let escaped = chars
+								.next()
+								.ok_or_else(|| error!("Invalid escape sequence"))?;
+							output.push(escaped);
+						}
+						'"' => {
+							output.push('"');
+							break;
+						}
+						'\n' | '\r' => return Err(error!("Unterminated double-quoted string")),
+						other => output.push(other),
+					}
+				}
+			}
+			c if is_identifier_start(c) => {
+				let mut identifier = String::new();
+				identifier.push(c);
+
+				while let Some(&next) = chars.peek() {
+					if is_identifier_continue(next) {
+						identifier.push(next);
+						chars.next();
+					} else {
+						break;
+					}
+				}
+
+				if is_object_key(&chars) {
+					output.push('"');
+					output.push_str(&identifier);
+					output.push('"');
+				} else {
+					output.push_str(&identifier);
+				}
+			}
+			other => output.push(other),
+		}
+	}
+
+	Ok(output)
+}
+
+fn is_object_key(chars: &core::iter::Peekable<core::str::Chars<'_>>) -> bool {
+	let mut lookahead = chars.clone();
+
+	while let Some(next) = lookahead.peek() {
+		if next.is_whitespace() {
+			lookahead.next();
+		} else {
+			return *next == ':';
+		}
+	}
+
+	false
+}
+
+fn is_identifier_start(c: char) -> bool {
+	c == '_' || c == '$' || c.is_ascii_alphabetic()
+}
+
+fn is_identifier_continue(c: char) -> bool {
+	is_identifier_start(c) || c.is_ascii_digit()
 }
 
 pub trait MangaPage {
